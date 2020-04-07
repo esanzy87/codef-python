@@ -1,13 +1,9 @@
 import base64
 import json
-import os
 import requests
 from urllib.parse import quote, unquote_plus
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
-
-
-BASE_URL = os.environ.get('PYCODEF_BASE_URL')
 
 
 def string_to_base64(s):
@@ -18,56 +14,109 @@ def base64_to_string(b):
     return base64.b64decode(b).decode('utf-8')
 
 
-def request_token():
-    client_id = os.environ.get('PYCODEF_CLIENT_ID')
-    client_secret = os.environ.get('PYCODEF_CLIENT_SECRET')
-    url = os.environ.get('PYCODEF_REQUEST_TOKEN_URL', 'https://oauth.codef.io/oauth/token')
-    headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + string_to_base64(client_id + ':' + client_secret).decode('utf-8')
-    }
-    response = requests.post(url, data='grant_type=client_credentials&scope=read', headers=headers)
-    return response
+def encrypt_rsa(public_key, data):
+    key_der = base64.b64decode(public_key)
+    key_pub = RSA.importKey(key_der)
+    cipher = Cipher_PKCS1_v1_5.new(key_pub)
+    cipher_text = cipher.encrypt(data.encode())
+    return base64.b64encode(cipher_text).decode("utf-8")
 
 
-def http_sender(url, body):
-    def _sender(token):
+def file_to_base64(filepath):
+    with open(filepath, 'rb') as file_stream:
+        data = file_stream.read()
+    return base64.b64encode(data).decode('utf-8')
+
+
+class RequestFactory:
+    def __init__(self, token_url, client_id, client_secret, base_url, public_key):
+        self.token_url = token_url
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.base_url = base_url
+        self.public_key = public_key
+
+    def request_token(self):
         headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Basic ' + string_to_base64(self.client_id + ':' + self.client_secret).decode('utf-8')
         }
-        return requests.post(url, data=quote(str(json.dumps(body))), headers=headers)
+        response = requests.post(self.token_url, data='grant_type=client_credentials&scope=read', headers=headers)
+        return response
 
-    access_token = ''
-    try:
-        response = _sender(access_token)
+    def http_sender(self, endpoint, body):
+        def _sender(token):
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token,
+            }
+            return requests.post(self.base_url + endpoint, data=quote(str(json.dumps(body))), headers=headers)
+
+        access_token = ''
+        try:
+            response = _sender(access_token)
+            assert response.status_code == 200
+        except AssertionError:
+            request_token_response = self.request_token()
+            assert request_token_response.status_code == 200
+            access_token = json.loads(request_token_response.text)['access_token']
+            response = _sender(access_token)
+        return response
+
+    def register_connected_id(self, country_code, business_type, client_type, organization, login_type, password, pfx_file):
+        assert country_code == 'KR'  # 국가코드 (대한민국 한정)
+        assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
+        assert login_type in ('0', '1')  # 로그인타입 (0: 인증서, 1: ID/PW)
+        payload = {
+            'accountList': [
+                {
+                    'countryCode': country_code,
+                    'businessType': business_type,
+                    'clientType': client_type,
+                    'organization': organization,
+                    'loginType': login_type,
+                    'password': encrypt_rsa(self.public_key, password),
+                    'cerFile': file_to_base64(pfx_file),
+                    'cerType': 'pfx',
+                }
+            ]
+        }
+        response = self.http_sender('/v1/account/create', body=payload)
         assert response.status_code == 200
-    except AssertionError:
-        request_token_response = request_token()
-        assert request_token_response.status_code == 200
-        access_token = json.loads(request_token_response.text)['access_token']
-        response = _sender(access_token)
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
 
-    return response
+    def fetch_connected_id_list(self, page_no):
+        payload = {
+            'pageNo': page_no
+        }
+        response = self.http_sender('/v1/account/connectedId-list', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
 
+    def fetch_account_list(self, connected_id):
+        payload = {
+            'connectedId': connected_id
+        }
+        response = self.http_sender('/v1/account/list', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
 
-def fetch_connected_id_list(page_no):
-    response = http_sender(BASE_URL + '/v1/account/connectedId-list', body={'pageNo': page_no})
-    assert response.status_code == 200
-    response_body = json.loads(unquote_plus(response.text))
-    return response_body
-
-
-def fetch_account_list(connected_id):
-    response = http_sender(BASE_URL + '/v1/account/list', body={'connectedId': connected_id})
-    assert response.status_code == 200
-    response_body = json.loads(unquote_plus(response.text))
-    return response_body
-
-
-def fetch_account_transaction_list(request_body):
-    response = http_sender(BASE_URL + '/v1/kr/bank/p/account/transaction-list', body=request_body)
-    assert response.status_code == 200
-    response_body = json.loads(unquote_plus(response.text))
-    return response_body
+    def fetch_account_transaction_list(self, connected_id, organization, account, start_date, end_date, order_by='0',
+                                       inquiry_type='1'):
+        payload = {
+            'connectedId': connected_id,
+            'organization': organization,
+            'account': account,
+            'startDate': start_date,
+            'endDate': end_date,
+            'orderBy': order_by,
+            'inquiryType': inquiry_type
+        }
+        response = self.http_sender('/v1/kr/bank/p/account/transaction-list', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
