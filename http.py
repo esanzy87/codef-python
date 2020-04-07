@@ -29,12 +29,12 @@ def file_to_base64(filepath):
 
 
 class RequestFactory:
-    def __init__(self, token_url, client_id, client_secret, base_url, public_key):
-        self.token_url = token_url
+    def __init__(self, client_id, client_secret, base_url, public_key, access_token=''):
         self.client_id = client_id
         self.client_secret = client_secret
         self.base_url = base_url
         self.public_key = public_key
+        self.access_token = access_token
 
     def request_token(self):
         headers = {
@@ -42,26 +42,24 @@ class RequestFactory:
             'Content-Type': 'application/x-www-form-urlencoded',
             'Authorization': 'Basic ' + string_to_base64(self.client_id + ':' + self.client_secret).decode('utf-8')
         }
-        response = requests.post(self.token_url, data='grant_type=client_credentials&scope=read', headers=headers)
+        response = requests.post('https://oauth.codef.io/oauth/token', data='grant_type=client_credentials&scope=read',
+                                 headers=headers)
         return response
 
     def http_sender(self, endpoint, body):
         def _sender(token):
-            headers = {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token,
-            }
+            headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token}
             return requests.post(self.base_url + endpoint, data=quote(str(json.dumps(body))), headers=headers)
 
-        access_token = ''
         try:
-            response = _sender(access_token)
+            response = _sender(self.access_token)
             assert response.status_code == 200
         except AssertionError:
+            print("requesting new access token due to invalid token")
             request_token_response = self.request_token()
             assert request_token_response.status_code == 200
-            access_token = json.loads(request_token_response.text)['access_token']
-            response = _sender(access_token)
+            self.access_token = json.loads(request_token_response.text)['access_token']
+            response = _sender(self.access_token)
         return response
 
     def register_connected_id(self, country_code, business_type, client_type, organization, login_type, password, pfx_file):

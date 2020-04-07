@@ -5,14 +5,13 @@ CODEF API를 이용하기 위한 Python binding
 """
 import os
 import unittest
-from pycodef.http import RequestFactory
+from ..http import RequestFactory
 
 
 # Environment Variables
-REQUEST_TOKEN_URL = os.environ.get('PYCODEF_REQUEST_TOKEN_URL', 'https://oauth.codef.io/oauth/token')
-CLIENT_ID = os.environ.get('PYCODEF_CLIENT_ID', '')
-CLIENT_SECRET = os.environ.get('PYCODEF_CLIENT_SECRET', '')
-BASE_URL = os.environ.get('PYCODEF_BASE_URL', 'https://development.codef.io')
+CLIENT_ID = os.environ.get('PYCODEF_CLIENT_ID', 'ef27cfaa-10c1-4470-adac-60ba476273f9')
+CLIENT_SECRET = os.environ.get('PYCODEF_CLIENT_SECRET', '83160c33-9045-4915-86d8-809473cdf5c3')
+BASE_URL = os.environ.get('PYCODEF_BASE_URL', 'https://sandbox.codef.io')
 PUBLIC_KEY = os.environ.get('PYCODEF_PUBLIC_KEY', '')
 PFX_FILE = os.environ.get('PYCODEF_PFX_FILE', '')
 PFX_PASSWORD = os.environ.get('PYCODEF_PFX_PASSWORD', '')
@@ -21,7 +20,7 @@ PFX_PASSWORD = os.environ.get('PYCODEF_PFX_PASSWORD', '')
 class HttpTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.request_factory = RequestFactory(REQUEST_TOKEN_URL, CLIENT_ID, CLIENT_SECRET, BASE_URL, PUBLIC_KEY)
+        cls.request_factory = RequestFactory(CLIENT_ID, CLIENT_SECRET, BASE_URL, PUBLIC_KEY)
         cls.connected_id = '8OLsIxnamncje8lkUuKax-O'
 
     def test_request_token(self):
@@ -35,7 +34,6 @@ class HttpTestCase(unittest.TestCase):
         organization = '0003'
         login_type = '0'
         response_body = self.request_factory.register_connected_id(country_code, business_type, client_type, organization, login_type, PFX_PASSWORD, PFX_FILE)
-        print(response_body['data'])
         self.assertEqual(response_body['result']['code'], 'CF-00000')
 
     def test_fetch_connected_id_list(self):
