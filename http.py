@@ -29,12 +29,13 @@ def file_to_base64(filepath):
 
 
 class RequestFactory:
-    def __init__(self, client_id, client_secret, base_url, public_key, access_token=''):
+    def __init__(self, client_id, client_secret, base_url, public_key, access_token='', country_code='KR'):
         self.client_id = client_id
         self.client_secret = client_secret
         self.base_url = base_url
         self.public_key = public_key
         self.access_token = access_token
+        self.country_code = country_code
 
     def request_token(self):
         headers = {
@@ -62,25 +63,62 @@ class RequestFactory:
             response = _sender(self.access_token)
         return response
 
-    def register_connected_id(self, country_code, business_type, client_type, organization, login_type, password, pfx_file):
-        assert country_code == 'KR'  # 국가코드 (대한민국 한정)
+    def register_connected_id(self, business_type, client_type, organization, userid, password):
         assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
-        assert login_type in ('0', '1')  # 로그인타입 (0: 인증서, 1: ID/PW)
         payload = {
             'accountList': [
                 {
-                    'countryCode': country_code,
+                    'countryCode': self.country_code,
                     'businessType': business_type,
                     'clientType': client_type,
                     'organization': organization,
-                    'loginType': login_type,
+                    'loginType': '1',
+                    'id': userid,
                     'password': encrypt_rsa(self.public_key, password),
-                    'cerFile': file_to_base64(pfx_file),
-                    'cerType': 'pfx',
                 }
             ]
         }
         response = self.http_sender('/v1/account/create', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
+
+    def add_account_to_connected_id(self, connected_id, business_type, client_type, organization, userid, password):
+        assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
+        payload = {
+            'connectedId': connected_id,
+            'accountList': [
+                {
+                    'countryCode': self.country_code,
+                    'businessType': business_type,
+                    'clientType': client_type,
+                    'organization': organization,
+                    'loginType': '1',
+                    'id': userid,
+                    'password': encrypt_rsa(self.public_key, password),
+                }
+            ]
+        }
+        response = self.http_sender('/v1/account/add', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
+
+    def delete_account_from_connected_id(self, connected_id, business_type, client_type, organization):
+        assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
+        payload = {
+            'connectedId': connected_id,
+            'accountList': [
+                {
+                    'countryCode': self.country_code,
+                    'businessType': business_type,
+                    'clientType': client_type,
+                    'organization': organization,
+                    'loginType': '1',
+                }
+            ]
+        }
+        response = self.http_sender('/v1/account/delete', body=payload)
         assert response.status_code == 200
         response_body = json.loads(unquote_plus(response.text))
         return response_body

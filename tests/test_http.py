@@ -13,8 +13,8 @@ CLIENT_ID = os.environ.get('PYCODEF_CLIENT_ID', 'ef27cfaa-10c1-4470-adac-60ba476
 CLIENT_SECRET = os.environ.get('PYCODEF_CLIENT_SECRET', '83160c33-9045-4915-86d8-809473cdf5c3')
 BASE_URL = os.environ.get('PYCODEF_BASE_URL', 'https://sandbox.codef.io')
 PUBLIC_KEY = os.environ.get('PYCODEF_PUBLIC_KEY', '')
-PFX_FILE = os.environ.get('PYCODEF_PFX_FILE', '')
-PFX_PASSWORD = os.environ.get('PYCODEF_PFX_PASSWORD', '')
+BANKING_USERID = os.environ.get('PYCODEF_PFX_FILE', '')
+BANKING_PASSWORD = os.environ.get('PYCODEF_PFX_PASSWORD', '')
 
 
 class HttpTestCase(unittest.TestCase):
@@ -28,12 +28,10 @@ class HttpTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_register_connected_id(self):
-        country_code = 'KR'
         business_type = 'BK'
         client_type = 'P'
         organization = '0003'
-        login_type = '0'
-        response_body = self.request_factory.register_connected_id(country_code, business_type, client_type, organization, login_type, PFX_PASSWORD, PFX_FILE)
+        response_body = self.request_factory.register_connected_id(business_type, client_type, organization, BANKING_USERID, BANKING_PASSWORD)
         self.assertEqual(response_body['result']['code'], 'CF-00000')
 
     def test_fetch_connected_id_list(self):
