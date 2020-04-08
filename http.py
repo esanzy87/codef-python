@@ -38,6 +38,11 @@ class RequestFactory:
         self.country_code = country_code
 
     def request_token(self):
+        """
+        access_token 요청
+
+        :return:
+        """
         headers = {
             'Accept': 'application/json',
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -48,7 +53,20 @@ class RequestFactory:
         return response
 
     def http_sender(self, endpoint, body):
+        """
+        http API 호출 요청
+
+        :param endpoint:
+        :param body:
+        :return:
+        """
         def _sender(token):
+            """
+            실질적으로 요청을 담당하는 헬퍼 함수
+
+            :param token:
+            :return:
+            """
             headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token}
             return requests.post(self.base_url + endpoint, data=quote(str(json.dumps(body))), headers=headers)
 
@@ -64,6 +82,16 @@ class RequestFactory:
         return response
 
     def register_connected_id(self, business_type, client_type, organization, userid, password):
+        """
+        기관 연동 추가 (커넥티드 아이디가 없는 경우)
+
+        :param business_type: BK = 은행, CD = 카드
+        :param client_type: P = 개인, B = 기업
+        :param organization: 4자리 기관코드
+        :param userid: 인터넷뱅킹 아이디
+        :param password: 인터넷뱅킹 비밀번호
+        :return:
+        """
         assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
         payload = {
             'accountList': [
@@ -84,6 +112,17 @@ class RequestFactory:
         return response_body
 
     def add_account_to_connected_id(self, connected_id, business_type, client_type, organization, userid, password):
+        """
+        기관 연동 추가 (커넥티드 아이디가 있는 경우)
+
+        :param connected_id: 기 등록된 커넥티드 아이디
+        :param business_type: BK = 은행, CD = 카드
+        :param client_type: P = 개인, B = 기업
+        :param organization: 4자리 기관코드
+        :param userid: 인터넷뱅킹 아이디
+        :param password: 인터넷뱅킹 비밀번호
+        :return:
+        """
         assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
         payload = {
             'connectedId': connected_id,
@@ -105,6 +144,15 @@ class RequestFactory:
         return response_body
 
     def delete_account_from_connected_id(self, connected_id, business_type, client_type, organization):
+        """
+        기관 연동 삭제
+
+        :param connected_id: 기 등록된 커넥티드 아이디
+        :param business_type: BK = 은행, CD = 카드
+        :param client_type: P = 개인, B = 기업
+        :param organization: 4자리 기관코드
+        :return:
+        """
         assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
         payload = {
             'connectedId': connected_id,
@@ -124,6 +172,12 @@ class RequestFactory:
         return response_body
 
     def fetch_connected_id_list(self, page_no):
+        """
+        커넥티드 아이디 목록 조회
+
+        :param page_no:
+        :return:
+        """
         payload = {
             'pageNo': page_no
         }
@@ -143,6 +197,18 @@ class RequestFactory:
 
     def fetch_account_transaction_list(self, connected_id, organization, account, start_date, end_date, order_by='0',
                                        inquiry_type='1'):
+        """
+        입출금 내역 조회
+
+        :param connected_id: 기 등록된 커넥티드 아이디
+        :param organization: 4자리 기관코드
+        :param account: 계좌번호
+        :param start_date: 조회 시작일
+        :param end_date: 조회 종료일
+        :param order_by:
+        :param inquiry_type:
+        :return:
+        """
         payload = {
             'connectedId': connected_id,
             'organization': organization,
