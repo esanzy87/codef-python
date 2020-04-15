@@ -123,6 +123,7 @@ class RequestFactory:
         :param password: 인터넷뱅킹 비밀번호
         :return:
         """
+        assert business_type in ('BK', 'CD')
         assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
         payload = {
             'connectedId': connected_id,
@@ -219,6 +220,47 @@ class RequestFactory:
             'inquiryType': inquiry_type
         }
         response = self.http_sender('/v1/kr/bank/p/account/transaction-list', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
+
+    def fetch_creditcard_list(self, connected_id, organization, birthdate):
+        """
+        보듀 카드 조회
+
+        :param connected_id:
+        :param organization:
+        :param birthdate:
+        :return:
+        """
+        payload = {
+            'connectedId': connected_id,
+            'organization': organization,
+            'birthDate': birthdate,
+            'inquryType': '1'
+        }
+        response = self.http_sender('/v1/kr/card/p/account/card-list', body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
+
+    def fetch_creditcard_approval_list(self, connected_id, organization, birthdate, start_date, end_date,
+                                       card_no, card_name, **kwargs):
+        payload = {
+            'connectedId': connected_id,
+            'organization': organization,
+            'birthDate': birthdate,
+            'startDate': start_date,
+            'endDate': end_date,
+            'orderBy': '0',
+            'inquiryType': '0',
+            'cardNo': card_no,
+            'cardName': card_name,
+            'duplicateCardIdx': '1',
+            'memberStoreInfoType': '0',
+        }
+        print(payload)
+        response = self.http_sender('/v1/kr/card/p/account/approval-list', body=payload)
         assert response.status_code == 200
         response_body = json.loads(unquote_plus(response.text))
         return response_body
