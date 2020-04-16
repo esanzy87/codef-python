@@ -52,6 +52,42 @@ class HttpTestCase(unittest.TestCase):
         )
         self.assertEqual(response_body['result']['code'], 'CF-00000')
 
+    def test_fetch_creditcard_list(self):
+        self.request_factory.add_account_to_connected_id(
+            self.connected_id,
+            'CD',
+            'P',
+            '0306',
+            '12345',
+            '12345',
+        )
+        response_body = self.request_factory.fetch_creditcard_list(
+            self.connected_id,
+            '0306',
+            '19901010',
+        )
+        self.assertEqual(response_body['result']['code'], 'CF-00000')
+
+    def test_fetch_creditcard_approval_list(self):
+        self.request_factory.add_account_to_connected_id(
+            self.connected_id,
+            'CD',
+            'P',
+            '0306',
+            '12345',
+            '12345',
+        )
+        response_body = self.request_factory.fetch_creditcard_approval_list(
+            self.connected_id,
+            '0306',
+            '19901010',
+            '20200101',
+            '20200131',
+            '1111111111',
+            '아무카드'
+        )
+        self.assertEqual(response_body['result']['code'], 'CF-00000')
+
 
 if __name__ == '__main__':
     unittest.main()
