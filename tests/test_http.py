@@ -31,7 +31,13 @@ class HttpTestCase(unittest.TestCase):
         business_type = 'BK'
         client_type = 'P'
         organization = '0003'
-        response_body = self.request_factory.register_connected_id(business_type, client_type, organization, BANKING_USERID, BANKING_PASSWORD)
+        response_body = self.request_factory.register_connected_id(
+            organization,
+            business_type=business_type,
+            client_type=client_type,
+            userid=BANKING_USERID,
+            password=BANKING_PASSWORD
+        )
         self.assertEqual(response_body['result']['code'], 'CF-00000')
 
     def test_fetch_connected_id_list(self):
@@ -55,11 +61,11 @@ class HttpTestCase(unittest.TestCase):
     def test_fetch_creditcard_list(self):
         self.request_factory.add_account_to_connected_id(
             self.connected_id,
-            'CD',
-            'P',
-            '0306',
-            '12345',
-            '12345',
+            business_type='CD',
+            client_type='P',
+            organization='0306',
+            userid='12345',
+            password='12345',
         )
         response_body = self.request_factory.fetch_creditcard_list(
             self.connected_id,
@@ -71,11 +77,11 @@ class HttpTestCase(unittest.TestCase):
     def test_fetch_creditcard_approval_list(self):
         self.request_factory.add_account_to_connected_id(
             self.connected_id,
-            'CD',
-            'P',
             '0306',
-            '12345',
-            '12345',
+            business_type='CD',
+            client_type='P',
+            userid='12345',
+            password='12345',
         )
         response_body = self.request_factory.fetch_creditcard_approval_list(
             self.connected_id,

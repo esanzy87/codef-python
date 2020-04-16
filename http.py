@@ -81,70 +81,88 @@ class RequestFactory:
             response = _sender(self.access_token)
         return response
 
-    def register_connected_id(self, business_type, client_type, organization, userid, password):
+    def register_connected_id(self, organization, **kwargs):
         """
         기관 연동 추가 (커넥티드 아이디가 없는 경우)
 
-        :param business_type: BK = 은행, CD = 카드
-        :param client_type: P = 개인, B = 기업
         :param organization: 4자리 기관코드
-        :param userid: 인터넷뱅킹 아이디
-        :param password: 인터넷뱅킹 비밀번호
+
         :return:
         """
-        assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
-        payload = {
-            'accountList': [
-                {
-                    'countryCode': self.country_code,
-                    'businessType': business_type,
-                    'clientType': client_type,
-                    'organization': organization,
-                    'loginType': '1',
-                    'id': userid,
-                    'password': encrypt_rsa(self.public_key, password),
-                }
-            ]
+        business_type = kwargs.get('business_type', 'BK')
+        assert business_type in ('BK', 'CD')  # BK = 은행, CD = 카드
+        client_type = kwargs.get('client_type', 'B')
+        assert client_type in ('P', 'B')  # P = 개인, B = 기업
+        login_type = kwargs.get('login_type', '1')
+        assert login_type in ('0', '1')  # 0 = 인증서 방식, 1 = 아이디/패스워드 방식
+
+        account_item = {
+            'countryCode': self.country_code,
+            'businessType': business_type,
+            'clientType': client_type,
+            'organization': organization,
+            'loginType': login_type,
+            'password': encrypt_rsa(self.public_key, kwargs['password']),
         }
+
+        if login_type == '0':
+            if 'pfx_file' in kwargs:
+                account_item['certFile'] = kwargs['pfx_file']
+                account_item['certType'] = 'pfx'
+            else:
+                account_item['derFile'] = kwargs['der_file']
+                account_item['keyFile'] = kwargs['key_file']
+        else:
+            account_item['id'] = kwargs['userid']
+
+        payload = {'accountList': [account_item]}
         response = self.http_sender('/v1/account/create', body=payload)
         assert response.status_code == 200
         response_body = json.loads(unquote_plus(response.text))
         return response_body
 
-    def add_account_to_connected_id(self, connected_id, business_type, client_type, organization, userid, password):
+    def add_account_to_connected_id(self, connected_id, organization, **kwargs):
         """
         기관 연동 추가 (커넥티드 아이디가 있는 경우)
 
         :param connected_id: 기 등록된 커넥티드 아이디
-        :param business_type: BK = 은행, CD = 카드
-        :param client_type: P = 개인, B = 기업
         :param organization: 4자리 기관코드
-        :param userid: 인터넷뱅킹 아이디
-        :param password: 인터넷뱅킹 비밀번호
+
         :return:
         """
-        assert business_type in ('BK', 'CD')
-        assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
-        payload = {
-            'connectedId': connected_id,
-            'accountList': [
-                {
-                    'countryCode': self.country_code,
-                    'businessType': business_type,
-                    'clientType': client_type,
-                    'organization': organization,
-                    'loginType': '1',
-                    'id': userid,
-                    'password': encrypt_rsa(self.public_key, password),
-                }
-            ]
+        business_type = kwargs.get('business_type', 'BK')
+        assert business_type in ('BK', 'CD')  # BK = 은행, CD = 카드
+        client_type = kwargs.get('client_type', 'B')
+        assert client_type in ('P', 'B')  # P = 개인, B = 기업
+        login_type = kwargs.get('login_type', '1')
+        assert login_type in ('0', '1')  # 0 = 인증서 방식, 1 = 아이디/패스워드 방식
+
+        account_item = {
+            'countryCode': self.country_code,
+            'businessType': business_type,
+            'clientType': client_type,
+            'organization': organization,
+            'loginType': login_type,
+            'password': encrypt_rsa(self.public_key, kwargs['password']),
         }
+
+        if login_type == '0':
+            if 'pfx_file' in kwargs:
+                account_item['certFile'] = kwargs['pfx_file']
+                account_item['certType'] = 'pfx'
+            else:
+                account_item['derFile'] = kwargs['der_file']
+                account_item['keyFile'] = kwargs['key_file']
+        else:
+            account_item['id'] = kwargs['userid']
+
+        payload = {'connectedId': connected_id, 'accountList': [account_item]}
         response = self.http_sender('/v1/account/add', body=payload)
         assert response.status_code == 200
         response_body = json.loads(unquote_plus(response.text))
         return response_body
 
-    def delete_account_from_connected_id(self, connected_id, business_type, client_type, organization):
+    def delete_account_from_connected_id(self, connected_id, business_type, client_type, organization, login_type='1'):
         """
         기관 연동 삭제
 
@@ -152,6 +170,7 @@ class RequestFactory:
         :param business_type: BK = 은행, CD = 카드
         :param client_type: P = 개인, B = 기업
         :param organization: 4자리 기관코드
+        :param login_type: 0 = 공인인증서, 1 = 아이디/패스워드 방식
         :return:
         """
         assert client_type in ('P', 'B')  # 고객구분(P: 개인, B: 기업)
@@ -163,7 +182,7 @@ class RequestFactory:
                     'businessType': business_type,
                     'clientType': client_type,
                     'organization': organization,
-                    'loginType': '1',
+                    'loginType': login_type,
                 }
             ]
         }
@@ -172,7 +191,7 @@ class RequestFactory:
         response_body = json.loads(unquote_plus(response.text))
         return response_body
 
-    def fetch_connected_id_list(self, page_no):
+    def fetch_connected_id_list(self, page_no='1'):
         """
         커넥티드 아이디 목록 조회
 
