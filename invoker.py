@@ -49,13 +49,8 @@ class InvokerFactory:
         assert client_type in ('P', 'B')  # P = 개인, B = 기업
         assert login_type in ('0', '1')  # 0 = 공인인증서 방식, 1 = 아이디/패스워드 방식
         assert country_code == 'KR'  # KR = 대한민국
-
-        if business_type == 'BK':
-            invoker_class = _BankInvoker
-        else:
-            invoker_class = _CreditCardInvoker
-        return invoker_class(self.client_id, self.client_secret, self.base_url, self.public_key,
-                             business_type, client_type, login_type, country_code)
+        return _Invoker(self.client_id, self.client_secret, self.base_url, self.public_key,
+                        business_type, client_type, login_type, country_code)
 
 
 class _Invoker:
@@ -172,6 +167,23 @@ class _Invoker:
         print(response_body)
         return response_body
 
+    def add_accounts(self, organizations, connected_id=None):
+        for org_info  in organizations:
+            org_info['password'] = encrypt_rsa(self.public_key, org_info['password'])
+
+        if not connected_id:
+            # 신규 connectedId 생성
+            payload = {'accountList': organizations}
+            endpoint = '/v1/account/create'
+        else:
+            # 기존 connectedId에 기관 연동 추가
+            payload = {'accountList': organizations, 'connectedId': connected_id}
+            endpoint = '/v1/account/add'
+        response = self.http_sender(endpoint=endpoint, body=payload)
+        assert response.status_code == 200
+        response_body = json.loads(unquote_plus(response.text))
+        return response_body
+
     def delete_account(self, connected_id,  organization):
         """
         기관 연동 삭제
@@ -223,8 +235,6 @@ class _Invoker:
         response_body = json.loads(unquote_plus(response.text))
         return response_body
 
-
-class _BankInvoker(_Invoker):
     def fetch_bank_account_list(self, connected_id, organization):
         """
         은행기관 보유계좌 조회
@@ -283,8 +293,6 @@ class _BankInvoker(_Invoker):
         response_body = json.loads(unquote_plus(response.text))
         return response_body
 
-
-class _CreditCardInvoker(_Invoker):
     def fetch_creditcard_list(self, connected_id, organization, birthdate):
         """
         보듀 카드 조회
