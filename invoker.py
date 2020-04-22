@@ -35,7 +35,7 @@ class InvokerFactory:
         self.base_url = base_url
         self.public_key = public_key
         
-    def get_invoker(self, business_type='BK', client_type='P', login_type='0', country_code='KR'):
+    def get_invoker(self, business_type='BK', client_type='P', login_type='0', country_code='KR', access_token=''):
         """
         CODEF API를 호출하는 invoker 객체 생성 Factory method
 
@@ -43,6 +43,7 @@ class InvokerFactory:
         :param client_type: P = 개인, B = 기업
         :param login_type: 0 = 공인인증서 방식, 1 = 아이디/패스워드 방식
         :param country_code: KR = 대한민국
+        :param access_token: cookie, MQ 등에 미리 저장된 access_token
         :return:
         """
         assert business_type in ('BK', 'CD')  # BK = 은행, CD = 카드
@@ -50,7 +51,7 @@ class InvokerFactory:
         assert login_type in ('0', '1')  # 0 = 공인인증서 방식, 1 = 아이디/패스워드 방식
         assert country_code == 'KR'  # KR = 대한민국
         return _Invoker(self.client_id, self.client_secret, self.base_url, self.public_key,
-                        business_type, client_type, login_type, country_code)
+                        business_type, client_type, login_type, country_code, access_token)
 
 
 class _Invoker:
@@ -58,7 +59,7 @@ class _Invoker:
     CODEF API를 호출하는 invoker class
     """
     def __init__(self, client_id, client_secret, base_url, public_key, business_type, client_type, login_type,
-                 country_code='KR'):
+                 country_code='KR', access_token=''):
         """
         
         :param client_id: 
@@ -78,7 +79,7 @@ class _Invoker:
         self.client_type = client_type
         self.login_type = login_type
         self.country_code = country_code
-        self.access_token = ''
+        self.access_token = access_token
 
     def __request_token(self):
         """
